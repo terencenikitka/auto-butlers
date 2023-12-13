@@ -1,8 +1,24 @@
-import React, { useEffect, useState } from "react";
-import { Switch, Route } from "react-router-dom";
+import React from "react";
+import { Switch, Route, Outlet, useLocation } from "react-router-dom";
+import NavBar from "./NavBar";
+import Creatures from "./Creatures";
+import Home from "./Home";
 
 function App() {
-  return <h1>Project Client</h1>;
+  const location = useLocation();
+
+  return (
+    <div >
+      <header >
+        <NavBar />
+      </header>
+
+      <div >
+        <Outlet />
+        {location.pathname === "/" && <Home />}
+      </div>
+    </div>
+  );
 }
 
 export default App;
