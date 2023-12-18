@@ -25,7 +25,7 @@ class Deck(db.Model, SerializerMixin):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    creatures = db.relationship('Creature', secondary='decks_creatures', backref='decks')
+    creatures = db.relationship('Creature', secondary='decks_creatures', backref='decks', overlaps="creatures,decks")
 
 class Creature(db.Model, SerializerMixin):
     __tablename__ = 'creatures'
@@ -39,7 +39,7 @@ class Creature(db.Model, SerializerMixin):
     strength_id = db.Column(db.Integer, db.ForeignKey('strengths.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    deck_creatures = db.relationship('DeckCreature', backref='creature')
+    deck_creatures = db.relationship('DeckCreature', backref='creature', overlaps="decks,creature")
     weakness = db.relationship('Weakness', foreign_keys=[weakness_id])
     strength = db.relationship('Strength', foreign_keys=[strength_id])
 
@@ -61,6 +61,6 @@ class Strength(db.Model, SerializerMixin):
 
 class DeckCreature(db.Model, SerializerMixin):
     __tablename__ = 'decks_creatures'
-    deck_id = db.Column(db.Integer, db.ForeignKey('decks.id'), primary_key=True)
-    creature_id = db.Column(db.Integer, db.ForeignKey('creatures.id'), primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    deck_id = db.Column(db.Integer, db.ForeignKey('decks.id'), nullable=False )
+    creature_id = db.Column(db.Integer, db.ForeignKey('creatures.id'), nullable=False)

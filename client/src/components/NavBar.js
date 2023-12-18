@@ -7,13 +7,18 @@ function NavBar() {
     return (
         <ul>
             <li>
-                <NavLink to="/Decks" className="nav-link">
+                <NavLink to="/decks" className="nav-link">
                     View Decks
                 </NavLink>
             </li>
             <li>
-                <NavLink to="/Creatures" className="nav-link">
+                <NavLink to="/creatures" className="nav-link">
                     View Creatures
+                </NavLink>
+            </li>
+             <li>
+                <NavLink to="/createdeck" className="nav-link">
+                    Create Deck
                 </NavLink>
             </li>
             <li>
@@ -21,6 +26,7 @@ function NavBar() {
                     Start Game
                 </NavLink>
             </li>
+           
         </ul>
     );
 }

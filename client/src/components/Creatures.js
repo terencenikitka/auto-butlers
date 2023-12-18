@@ -4,7 +4,6 @@ function Creatures() {
   const [creatures, setCreatures] = useState([]);
 
   useEffect(() => {
-    // Fetch data when the component mounts
     fetch("http://127.0.0.1:5555/creatures")
       .then((response) => response.json())
       .then((data) => setCreatures(data))

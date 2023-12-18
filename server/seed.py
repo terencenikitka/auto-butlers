@@ -57,7 +57,6 @@ def seed_creatures():
     strengths = Strength.query.all()
 
     for deck in decks:
-        # Ensure each deck has exactly 10 creatures
         creature_count = Creature.query.join(DeckCreature).filter(DeckCreature.deck_id == deck.id).count()
         creatures_to_add = max(0, 10 - creature_count)
 
@@ -72,9 +71,13 @@ def seed_creatures():
                 strength=rc(strengths),
             )
 
-            # Manually create a DeckCreature entry for the association
-            deck_creature = DeckCreature(deck_id=deck.id, creature=creature)
             db.session.add(creature)
+            db.session.commit()  # Commit the creature to generate the ID
+
+            # Manually create a DeckCreature entry for the association
+            deck_creature = DeckCreature(deck_id=deck.id, creature_id=creature.id)
+            deck_creature.deck = deck  # Set the deck attribute
+            deck_creature.creature = creature  # Set the creature attribute
             db.session.add(deck_creature)
 
     db.session.commit()
