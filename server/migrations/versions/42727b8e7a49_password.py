@@ -1,8 +1,8 @@
-"""remove date from 
+"""password
 
-Revision ID: 1cf282b9c706
+Revision ID: 42727b8e7a49
 Revises: 
-Create Date: 2023-12-13 10:30:24.829609
+Create Date: 2023-12-18 15:07:56.458297
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '1cf282b9c706'
+revision = '42727b8e7a49'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,12 +27,12 @@ def upgrade():
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('login', sa.String(length=255), nullable=True),
-    sa.Column('password', sa.String(length=255), nullable=True),
+    sa.Column('username', sa.String(), nullable=True),
+    sa.Column('email', sa.String(length=255), nullable=True),
+    sa.Column('_password_hash', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('login')
+    sa.UniqueConstraint('email')
     )
     op.create_table('weaknesses',
     sa.Column('id', sa.Integer(), nullable=False),

@@ -3,19 +3,17 @@ import Creatures from "./components/Creatures";
 import Decks from "./components/Decks";
 import ErrorPage from "./components/ErrorPage";
 import Home from "./components/Home";
-import Game from "./components/Game";
 import CreateDeck from "./components/CreateDeck";
 import Signup from "./components/Signup";
+import StartGame from "./components/StartGame";
+import Game from "./components/Game";
 const routes = [
     {
         path: "/",
         element: <App />,
         errorElement: <ErrorPage />,
         children: [
-            {
-                path: "/",
-                element: <Signup />
-            },
+         
             {
                 path:'/creatures',
                 element:<Creatures/>
@@ -25,12 +23,16 @@ const routes = [
                 element:<Decks/>
             },
             {
-                path:'/game',
-                element:<Game/>
+                path:'/startgame',
+                element:<StartGame/>
             },
             {
                 path:'/createdeck',
                 element:<CreateDeck/>
+            },
+            {
+                path:'/game',
+                element:<Game/>
             }
         ]}]
 

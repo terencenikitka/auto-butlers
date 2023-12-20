@@ -1,4 +1,4 @@
-from flask import request, make_response
+from flask import request, make_response, session
 from flask_restful import Resource
 from datetime import datetime
 from config import app, db, api
@@ -15,6 +15,18 @@ class Users(Resource):
         all_users = User.query.all()
         user_data = [user.to_dict(rules=('-decks',)) for user in all_users]
         return make_response(user_data, 200)
+
+    def post(self):
+        data = request.get_json()
+        user = User(username=data['username'], email=data['email'], password_hash=data['password'])
+        db.session.add(user)
+        db.session.commit()
+        session['user_id'] = user.id
+        return make_response({'user': user.to_dict()}, 201 )
+
+api.add_resource(Users, '/api/v1/users')
+    
+
 
 class Creatures(Resource):
     def get(self, creature_id=None):
@@ -176,10 +188,38 @@ class Decks(Resource):
             return make_response({'error': 'Internal Server Error'}, 500)
 
 
-api.add_resource(Users, '/users', '/users/<int:user_id>')
-api.add_resource(Creatures, '/creatures', '/creatures/<int:creature_id>')
-api.add_resource(DeckCreatures, '/deckcreatures', '/deckcreatures/<int:deck_creature_id>')
-api.add_resource(Decks, '/decks', '/decks/<int:deck_id>')
+
+# api.add_resource(Users, '/users', '/users/<int:user_id>')
+api.add_resource(Creatures, '/api/v1/creatures', '/api/v1/creatures/<int:creature_id>')
+api.add_resource(DeckCreatures, '/api/v1/deckcreatures', '/api/v1/deckcreatures/<int:deck_creature_id>')
+api.add_resource(Decks, '/api/v1/decks', '/api/v1/decks/<int:deck_id>')
+
+
+@app.route('/api/v1/authorized')
+def authorized():
+    try:
+        user = User.query.filter_by(id=session.get('user_id')).first()
+        return make_response(user.to_dict(), 200)
+    except:
+        return make_response({ "error": "User not found"}, 404)
+
+@app.route('/api/v1/logout', methods=['DELETE'])
+def logout():
+    session['user_id'] = None 
+    return make_response('', 204)
+
+@app.route('/api/v1/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    try:
+        user = User.query.filter_by(username=data['username']).first()
+        if user.authenticate(data['password']):
+            session['user_id'] = user.id
+            return make_response({'user': user.to_dict()}, 200)
+        else:
+            return make_response({'error': 'incorrect password'}, 401)
+    except:
+        return make_response({'error': 'username incorrect'}, 401)
 
 @app.route('/')
 def index():

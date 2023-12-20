@@ -22,7 +22,7 @@ function NavBar() {
                 </NavLink>
             </li>
             <li>
-                <NavLink to="/game" className="nav-link">
+                <NavLink to="/startgame" className="nav-link">
                     Start Game
                 </NavLink>
             </li>

@@ -15,9 +15,9 @@ fake = Faker()
 def seed_users():
     for _ in range(5):  # Seed 5 users
         user = User(
-            name=fake.name(),
-            login=fake.user_name(),
-            password=fake.password(),
+            username=fake.name(),
+            email=fake.user_name(),
+            _password_hash=fake.password(),
         )
         db.session.add(user)
     db.session.commit()

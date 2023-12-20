@@ -1,227 +1,463 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Paper, Button, Typography } from '@mui/material';
+import { css } from '@emotion/react';
+
+
+
+const cardStyle = css`
+  border: 1px solid #000;
+  padding: 8px;
+  cursor: pointer;
+`;
+
+const containerStyle = css`
+  display: flex;
+  gap: 16px;
+`;
+
+const battleLogStyle = css`
+  flex: 1;
+`;
+
+const playerInfoStyle = css`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 16px;
+`;
+
+const opponentFieldStyle = css`
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: center;
+`;
+
 
 const Game = () => {
-  const [playerDecks, setPlayerDecks] = useState([]);
-  const [opponentDecks, setOpponentDecks] = useState([]);
-  const [selectedPlayerDeck, setSelectedPlayerDeck] = useState(null);
-  const [selectedOpponentDeck, setSelectedOpponentDeck] = useState(null);
   const [playerHand, setPlayerHand] = useState([]);
   const [opponentHand, setOpponentHand] = useState([]);
-  const [playerMana, setPlayerMana] = useState(1);
-  const [opponentMana, setOpponentMana] = useState(1);
-  const [playerHealth, setPlayerHealth] = useState(30);
-  const [opponentHealth, setOpponentHealth] = useState(30);
-  const [table, setTable] = useState([]);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [playerCreatures, setPlayerCreatures] = useState([]);
-  const [opponentCreatures, setOpponentCreatures] = useState([]);
+  const [playerDeckState, setPlayerDeckState] = useState([]);
+  const [opponentDeckState, setOpponentDeckState] = useState([]);
+  const [playerField, setPlayerField] = useState([]);
+  const [opponentField, setOpponentField] = useState([]);
+  const [maxMana, setMaxMana] = useState(1);
+  const [mana, setMana] = useState(0);
+  const [opponentMana, setOpponentMana] = useState(0);
+  const [maxOpponentMana, setMaxOpponentMana] = useState(1);
+  const [turnEnded, setTurnEnded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [remainingPlayerDeck, setRemainingPlayerDeck] = useState(0);
+  const [remainingOpponentDeck, setRemainingOpponentDeck] = useState(0);
+  const [damageDealt, setDamageDealt] = useState(0);
+  const [damageReceived, setDamageReceived] = useState(0);
+  const [opponentDrawn, setOpponentDrawn] = useState(false);
+  const [attacker, setAttacker] = useState(null);
+  const [target, setTarget] = useState(null);
+  const [battleLog, setBattleLog] = useState([]);
+  const [isPlayerAttacking, setIsPlayerAttacking] = useState(false);
+  const [playerHealth, setPlayerHealth] = useState(100);
+  const [opponentHealth, setOpponentHealth] = useState(100);
+
+  const { playerDeck, opponentDeck } = useLocation().state;
 
   useEffect(() => {
-    const fetchDecks = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:5555/decks');
-        const decksData = await response.json();
-        setPlayerDecks(decksData);
-        setOpponentDecks(decksData);
-      } catch (error) {
-        console.error('Error fetching decks:', error);
-      }
-    };
+    initializeGame();
+  }, [playerDeck, opponentDeck]);
 
-    fetchDecks();
-  }, []);
-
-  const fetchDeckCreatures = async (deckId) => {
-    const response = await fetch(`http://127.0.0.1:5555/deckcreatures?deck_id=${deckId}`);
-    return response.json();
-  };
-
-  const fetchCreatureInfo = async (creatureId) => {
-    const response = await fetch(`http://127.0.0.1:5555/creatures/${creatureId}`);
-    return response.json();
-  };
-
-  const initializeGameState = async (playerDeck, opponentDeck, initialPlayerHand, initialOpponentHand) => {
+  const initializeGame = async () => {
     try {
-      const playerDeckCreaturesData = await fetchDeckCreatures(playerDeck.id);
-      const opponentDeckCreaturesData = await fetchDeckCreatures(opponentDeck.id);
+      const playerDeckCreatures = await fetchCreaturesInDeck(playerDeck);
+      const opponentDeckCreatures = await fetchCreaturesInDeck(opponentDeck);
 
-      const playerCreatures = await Promise.all(
-        playerDeckCreaturesData.map(async (deckCreature) => {
-          return fetchCreatureInfo(deckCreature.creature_id);
-        })
-      );
+      setPlayerDeckState(playerDeckCreatures);
+      setOpponentDeckState(opponentDeckCreatures);
 
-      const opponentCreatures = await Promise.all(
-        opponentDeckCreaturesData.map(async (deckCreature) => {
-          return fetchCreatureInfo(deckCreature.creature_id);
-        })
-      );
+      setRemainingPlayerDeck(playerDeckCreatures.length);
+      setRemainingOpponentDeck(opponentDeckCreatures.length);
 
-      return {
-        playerHand: initialPlayerHand,
-        opponentHand: initialOpponentHand,
-        playerMana: 1,
-        opponentMana: 1,
-        playerCreatures,
-        opponentCreatures,
-      };
+      await drawInitialHands(playerDeckCreatures, opponentDeckCreatures, 2);
+
+      setMana(1);
+      setOpponentMana(1);
+      setTurnEnded(false);
+      setMaxMana(1);
+      setMaxOpponentMana(1);
+
+      setLoading(false);
     } catch (error) {
-      console.error('Error initializing game state:', error);
-      return null;
+      console.error('Error initializing game:', error);
+      setError('Error initializing game. Please try again.');
+      setLoading(false);
     }
   };
 
-  const startGame = async () => {
-    if (!selectedPlayerDeck || !selectedOpponentDeck) {
-      console.error('Please select decks for both players.');
-      return;
-    }
+  const drawInitialHands = async (playerDeckCreatures, opponentDeckCreatures, numCards) => {
+    console.log('Drawing initial hands...');
+    const playerInitialCards = drawInitialCards(playerDeckCreatures, numCards, setRemainingPlayerDeck);
+    const opponentInitialCards = drawInitialCards(opponentDeckCreatures, numCards, setRemainingOpponentDeck);
+    setPlayerHand(playerInitialCards);
+    setOpponentHand(opponentInitialCards);
+  };
 
-    const initialPlayerHand = drawInitialCards(selectedPlayerDeck);
-    const initialOpponentHand = drawInitialCards(selectedOpponentDeck);
-
-    const initialState = await initializeGameState(
-      selectedPlayerDeck,
-      selectedOpponentDeck,
-      initialPlayerHand,
-      initialOpponentHand
-    );
-
-    if (initialState) {
-      setPlayerHand(initialState.playerHand);
-      setOpponentHand(initialState.opponentHand);
-      setPlayerMana(initialState.playerMana);
-      setOpponentMana(initialState.opponentMana);
-      setPlayerCreatures(initialState.playerCreatures);
-      setOpponentCreatures(initialState.opponentCreatures);
-      setTable([]);
-      setGameStarted(true);
+  const fetchCreaturesInDeck = async (deck) => {
+    try {
+      const creaturesResponse = await fetch(`/creatures?id=${deck.join(',')}`);
+      const creaturesData = await creaturesResponse.json();
+      const selectedCreatures = creaturesData.filter((el) => deck.includes(el.id));
+      return selectedCreatures;
+    } catch (error) {
+      console.error('Error fetching creatures in deck:', error);
+      return [];
     }
   };
 
-  const drawInitialCards = (deck) => {
-    const initialHand = [];
-    for (let i = 0; i < 2; i++) {
-      const drawnCard = drawCard(deck);
-      initialHand.push(drawnCard);
-    }
-    return initialHand;
-  };
+  const drawInitialCards = (deck, numCards, remainingDeckSetter) => {
+    const hand = [];
+    const newDeck = [...deck];
+    const uniqueCards = new Set();
 
-  const drawCard = (deck) => {
-    if (!deck || !deck.cards || deck.cards.length === 0) {
-      console.error('Invalid deck or empty cards array');
-      return null;
-    }
+    for (let i = 0; i < numCards; i++) {
+      if (newDeck.length === 0) {
+        console.warn('Deck is empty!');
+        break;
+      }
 
-    return deck.cards[Math.floor(Math.random() * deck.cards.length)];
-  };
+      const randomIndex = Math.floor(Math.random() * newDeck.length);
+      const drawnCard = newDeck.splice(randomIndex, 1)[0];
 
-  const endTurn = () => {
-    console.log('End Turn');
-    opponentTurn();
-  };
+      if (!uniqueCards.has(drawnCard.id)) {
+        hand.push(drawnCard);
+        uniqueCards.add(drawnCard.id);
 
-  const opponentTurn = () => {
-    console.log('Opponent Turn');
-  };
-
-  const playCard = (card) => {
-    console.log(card)
-    if (!card || !card.name) {
-      console.error('Invalid card or missing name property');
-      return;
+        const cardIndexInDeck = deck.findIndex((card) => card.id === drawnCard.id);
+        if (cardIndexInDeck !== -1) {
+          deck.splice(cardIndexInDeck, 1);
+          remainingDeckSetter(deck.length);
+        }
+      }
     }
 
-    console.log(`Play Card: ${card.name}`);
+    return hand;
   };
+
+  const drawInitialPlayerCards = async (numCards) => {
+    console.log('Drawing initial player cards...');
+    return new Promise((resolve) => {
+      setPlayerHand((prevHand) => {
+        const drawnCards = drawInitialCards(playerDeckState, numCards, setRemainingPlayerDeck);
+        resolve([...prevHand, ...drawnCards]);
+        return [...prevHand, ...drawnCards];
+      });
+    });
+  };
+
+  const drawInitialOpponentCards = async (numCards) => {
+    console.log('Drawing initial opponent cards...');
+    try {
+      setOpponentDeckState((prevDeck) => {
+        const drawnCards = drawInitialCards(prevDeck, numCards, setRemainingOpponentDeck);
+        setOpponentHand((prevHand) => [...prevHand, ...drawnCards]);
+        return prevDeck.filter((card) => !drawnCards.some((drawnCard) => drawnCard.id === card.id));
+      });
+    } catch (error) {
+      console.error('Error drawing initial opponent cards:', error);
+    }
+  };
+
+  const playCard = (card, isPlayerCard) => {
+    const updatedHand = isPlayerCard
+      ? playerHand.filter((c) => c !== card)
+      : opponentHand.filter((c) => c !== card);
+
+    if (isPlayerCard && card.cost <= mana) {
+      setPlayerHand(updatedHand);
+      setMana(mana - card.cost);
+      setPlayerField([...playerField, { ...card, hasAttacked: false }]);
+      setDamageDealt(card.attack);
+      setAttacker(card);
+      setTarget(null);
+    } else if (!isPlayerCard && card.cost <= opponentMana) {
+      setOpponentHand(updatedHand);
+      setOpponentMana(opponentMana - card.cost);
+      setOpponentField([...opponentField, { ...card, hasAttacked: false }]);
+      setDamageReceived(card.attack);
+      setAttacker(null);
+      setTarget(card);
+    }
+  };
+
+  const performCreatureAttack = async () => {
+    setIsPlayerAttacking(true);
+
+    const newBattleLog = [];
+
+    for (const playerCard of playerField) {
+      if (!playerCard || playerCard.hasAttacked) {
+        continue; // Пропускаем существ, которые уже атаковали в текущем ходе
+      }
+
+      const randomOpponentIndex = Math.floor(Math.random() * opponentField.length);
+      const opponentCard = opponentField[randomOpponentIndex];
+
+      if (opponentCard && opponentCard.health > 0) {
+        const playerDamage = playerCard.attack;
+        const opponentDamage = opponentCard.attack;
+
+        const updatedPlayerField = playerField.map((card) => ({
+          ...card,
+          hasAttacked: card === playerCard ? true : card.hasAttacked,
+          health: Math.max(0, card.health - opponentDamage),
+        })).filter((card) => card.health > 0);
+
+        setPlayerField(updatedPlayerField);
+
+        const updatedOpponentField = [...opponentField];
+        updatedOpponentField[randomOpponentIndex].health -= playerDamage;
+
+        if (updatedOpponentField[randomOpponentIndex].health <= 0) {
+          const target = updatedOpponentField[randomOpponentIndex];
+          updatedOpponentField.splice(randomOpponentIndex, 1);
+          setOpponentField(updatedOpponentField);
+
+          setDamageReceived(opponentDamage);
+          setDamageDealt(playerDamage);
+          setAttacker(playerCard);
+          setTarget(target);
+
+          newBattleLog.push({
+            attacker: playerCard.name,
+            target: target.name,
+            damageDealt: playerDamage,
+            damageReceived: opponentDamage,
+          });
+        }
+      } else {
+        // Атака героя, если нет существ противника
+        setOpponentHealth((prevHealth) => Math.max(0, prevHealth - playerCard.attack));
+      }
+    }
+
+    setBattleLog((prevBattleLog) => [...prevBattleLog, ...newBattleLog]);
+    setIsPlayerAttacking(false);
+  };
+
+  const handleOpponentTurn = async () => {
+    try {
+      if (!opponentDrawn) {
+        drawInitialOpponentCards(1);
+        setOpponentDrawn(true);
+        console.log('Opponent drew a card.');
+      }
+
+      let opponentCard = getOpponentPlay();
+
+      if (opponentCard) {
+        playCard(opponentCard, false);
+        console.log('Opponent played a card:', opponentCard);
+      } else {
+        console.log('Opponent cannot play a card. Ending turn.');
+      }
+
+      setMaxOpponentMana((prevMaxMana) => Math.min(prevMaxMana + 1, 10));
+      setOpponentMana(Math.min(maxOpponentMana + 1, 10));
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      performCreatureAttack();
+      setTurnEnded(false);
+
+      startOpponentCreatureAttacks();
+
+      setOpponentDrawn(false);
+    } catch (error) {
+      console.error('Error handling opponent turn:', error);
+    }
+  };
+
+  const getOpponentPlay = () => {
+    const playableCards = opponentHand.filter((card) => card.cost <= opponentMana);
+
+    if (playableCards.length > 0) {
+      const randomIndex = Math.floor(Math.random() * playableCards.length);
+      return playableCards[randomIndex];
+    }
+
+    return null;
+  };
+
+  const startOpponentCreatureAttacks = () => {
+    if (!isPlayerAttacking) {
+      performOpponentCreatureAttacks();
+    }
+  };
+
+  const performOpponentCreatureAttacks = async () => {
+    const newBattleLog = [];
+
+    for (const opponentCard of opponentField) {
+      const randomPlayerIndex = Math.floor(Math.random() * playerField.length);
+      const playerCard = playerField[randomPlayerIndex];
+
+      if (opponentCard && playerCard && playerCard.health > 0) {
+        const opponentDamage = opponentCard.attack;
+        const playerDamage = playerCard.attack;
+
+        const updatedOpponentField = opponentField.map((card) => ({
+          ...card,
+          health: Math.max(0, card.health - playerDamage),
+        })).filter((card) => card.health > 0);
+
+        setOpponentField(updatedOpponentField);
+
+        const updatedPlayerField = [...playerField];
+        updatedPlayerField[randomPlayerIndex].health -= opponentDamage;
+
+        if (updatedPlayerField[randomPlayerIndex].health <= 0) {
+          const target = updatedPlayerField[randomPlayerIndex];
+          updatedPlayerField.splice(randomPlayerIndex, 1);
+          setPlayerField(updatedPlayerField);
+
+          newBattleLog.push({
+            attacker: opponentCard.name,
+            target: target.name,
+            damageDealt: opponentDamage,
+            damageReceived: playerDamage,
+          });
+        }
+      }
+
+      // Add a delay after each attack
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    setBattleLog((prevBattleLog) => [...prevBattleLog, ...newBattleLog]);
+  };
+
+  const endTurn = async () => {
+    setMaxMana((prevMaxMana) => Math.min(prevMaxMana + 1, 10));
+    setMana(Math.min(maxMana + 1, 10));
+
+    await handleOpponentTurn();
+
+    await drawInitialPlayerCards(1);
+
+    performCreatureAttack();
+
+    setTurnEnded(false);
+  };
+
+  const isPlayerTurn = !turnEnded;
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  if (error) {
+    return <p>{error}</p>;
+  }
 
   return (
-    <div>
-      <h2>Game</h2>
-      {!gameStarted && (
-        <div>
-          <h3>Select Decks:</h3>
-          <div>
-            <label>Player Deck:</label>
-            <select onChange={(e) => setSelectedPlayerDeck(JSON.parse(e.target.value))}>
-              <option value={null}>Select Deck</option>
-              {playerDecks.map((deck) => (
-                <option key={deck.id} value={JSON.stringify(deck)}>
-                  {deck.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label>Opponent Deck:</label>
-            <select onChange={(e) => setSelectedOpponentDeck(JSON.parse(e.target.value))}>
-              <option value={null}>Select Deck</option>
-              {opponentDecks.map((deck) => (
-                <option key={deck.id} value={JSON.stringify(deck)}>
-                  {deck.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button onClick={startGame}>Start Game</button>
-        </div>
-      )}
-      {gameStarted && (
-        <div>
-          <div>
-            <h3>Player Deck: {selectedPlayerDeck.name}</h3>
-            <h3>Opponent Deck: {selectedOpponentDeck.name}</h3>
-          </div>
-          <div>
-            <h3>Player Health: {playerHealth}</h3>
-            <h3>Opponent Health: {opponentHealth}</h3>
-          </div>
-          <div>
-            <h3>Player Mana: {playerMana}</h3>
-            <h3>Opponent Mana: {opponentMana}</h3>
-          </div>
-          <button onClick={endTurn}>End Turn</button>
-          <div>
-            <h3>Player Hand:</h3>
+    <div css={containerStyle}>
+      <div css={battleLogStyle}>
+        <Paper elevation={3} style={{ padding: 16, marginBottom: 16 }}>
+          <Typography variant="h5">Battle Log:</Typography>
+          <ul>
+            {battleLog.map((entry, index) => (
+              <li key={index}>
+                {entry.attacker} attacked {entry.target} - Damage Dealt: {entry.damageDealt}, Damage Received: {entry.damageReceived}
+              </li>
+            ))}
+          </ul>
+        </Paper>
+      </div>
+
+      <div css={playerInfoStyle}>
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+          <Typography variant="h5">Player Health: {playerHealth}</Typography>
+        </Paper>
+
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+          <Typography variant="h5">Player Hand (Mana: {mana}/{maxMana}):</Typography>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
             {playerHand.map((card) => (
-              <div key={card.id}>
-                <p>{card.name}</p>
-                <button onClick={() => playCard(card)}>Play Card</button>
+              <div
+                key={card.id}
+                onClick={() => isPlayerTurn && playCard(card, true)}
+                style={{
+                  ...cardStyle,
+                  cursor: isPlayerTurn && card.cost <= mana ? 'pointer' : 'not-allowed',
+                }}
+              >
+                <Typography variant="body1">Name: {card.name}</Typography>
+                <Typography variant="body1">Cost: {card.cost}</Typography>
+                <Typography variant="body1">Attack: {card.attack}</Typography>
+                <Typography variant="body1">Health: {card.health}</Typography>
               </div>
             ))}
           </div>
-          <div>
-            <h3>Player Creatures:</h3>
-            {playerCreatures.map((creature) => (
-              <div key={creature.id}>
-                <p>{creature.name}</p>
-                <p>Health: {creature.health}</p>
-                
+        </Paper>
+
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+          <Typography variant="h5">Player Field:</Typography>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+            {playerField.map((card) => (
+              <div
+                key={card.id}
+                style={cardStyle}
+              >
+                <Typography variant="body1">Name: {card.name}</Typography>
+                <Typography variant="body1">Attack: {card.attack}</Typography>
+                <Typography variant="body1">Health: {card.health}</Typography>
               </div>
             ))}
           </div>
-          <div>
-            <h3>Opponent Creatures:</h3>
-            {opponentCreatures.map((creature) => (
-              <div key={creature.id}>
-                <p>{creature.name}</p>
-                <p>Health: {creature.health}</p>
-                {/* Add other properties you want to display */}
-              </div>
-            ))}
-          </div>
-          <div>
-            <h3>Table:</h3>
-            {table.map((creature) => (
-              <div key={creature.id}>
-                <p>{creature.name}</p>
-              </div>
-            ))}
-          </div>
+        </Paper>
+      </div>
+
+      <Paper css={opponentFieldStyle} elevation={3}>
+        <Typography variant="h5">Opponent Field:</Typography>
+        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column-reverse' }}>
+          {opponentField.map((card) => (
+            <div
+              key={card.id}
+              style={cardStyle}
+            >
+              <Typography variant="body1">Name: {card.name}</Typography>
+              <Typography variant="body1">Attack: {card.attack}</Typography>
+              <Typography variant="body1">Health: {card.health}</Typography>
+            </div>
+          ))}
         </div>
-      )}
+      </Paper>
+
+      <div css={playerInfoStyle}>
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+          <Typography variant="h5">Opponent Health: {opponentHealth}</Typography>
+        </Paper>
+
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+          <Typography variant="h5">Opponent Hand (Mana: {opponentMana}/{maxOpponentMana}):</Typography>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'column-reverse' }}>
+            {opponentHand.map((card) => (
+              <div
+                key={card.id}
+                style={{ ...cardStyle, cursor: 'not-allowed' }}
+              >
+                <Typography variant="body1">Name: {card.name}</Typography>
+                <Typography variant="body1">Cost: {card.cost}</Typography>
+                <Typography variant="body1">Attack: {card.attack}</Typography>
+                <Typography variant="body1">Health: {card.health}</Typography>
+              </div>
+            ))}
+          </div>
+        </Paper>
+      </div>
+
+      <Button variant="contained" color="primary" onClick={endTurn} disabled={!isPlayerTurn}>
+        End Turn
+      </Button>
     </div>
   );
 };

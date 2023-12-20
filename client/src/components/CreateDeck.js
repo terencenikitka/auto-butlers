@@ -18,7 +18,7 @@ function CreateDeck() {
 
   const fetchUserIds = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:5555/users");
+      const response = await fetch("/users");
       if (!response.ok) {
         throw new Error("Error fetching user IDs");
       }
@@ -32,7 +32,7 @@ function CreateDeck() {
 
   const fetchCreatureIds = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:5555/creatures");
+      const response = await fetch("/creatures");
       if (!response.ok) {
         throw new Error("Error fetching creature IDs");
       }
@@ -58,7 +58,7 @@ function CreateDeck() {
   const createDeck = async () => {
     try {
       if (newDeckName.trim() !== '' && selectedUserId !== null) {
-        const deckResponse = await fetch("http://127.0.0.1:5555/decks", {
+        const deckResponse = await fetch("/decks", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -84,7 +84,7 @@ function CreateDeck() {
           randomCreatureIds.map(async (creatureId) => {
             try {
                 console.log(createdDeckId)
-              const deckCreatureResponse = await fetch("http://127.0.0.1:5555/deckcreatures", {
+              const deckCreatureResponse = await fetch("/deckcreatures", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",

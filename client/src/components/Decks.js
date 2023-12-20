@@ -7,7 +7,7 @@ function Decks() {
   const [newDeckName, setNewDeckName] = useState('');
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5555/decks")
+    fetch("/decks")
       .then((response) => response.json())
       .then((data) => setDecks(data))
       .catch((error) => console.error("Error fetching decks:", error));
@@ -15,10 +15,10 @@ function Decks() {
 
   const fetchCreaturesInDeck = async (deckId) => {
     try {
-      const creaturesResponse = await fetch("http://127.0.0.1:5555/creatures");
+      const creaturesResponse = await fetch("/creatures");
       const creaturesData = await creaturesResponse.json();
 
-      const deckCreaturesResponse = await fetch("http://127.0.0.1:5555/deckcreatures");
+      const deckCreaturesResponse = await fetch("/deckcreatures");
       const deckCreaturesData = await deckCreaturesResponse.json();
 
       const creatureIdsInSelectedDeck = deckCreaturesData
@@ -39,7 +39,7 @@ function Decks() {
   const handleDeckRename = async () => {
     if (newDeckName.trim() !== '' && selectedDeckId !== null) {
       try {
-        const response = await fetch(`http://127.0.0.1:5555/decks/${selectedDeckId}`, {
+        const response = await fetch(`/decks/${selectedDeckId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -68,7 +68,7 @@ function Decks() {
   const handleDeckDelete = async (deckId) => {
     if (window.confirm("Are you sure you want to delete this deck?")) {
       try {
-        const response = await fetch(`http://127.0.0.1:5555/decks/${deckId}`, {
+        const response = await fetch(`/decks/${deckId}`, {
           method: "DELETE",
         });
 

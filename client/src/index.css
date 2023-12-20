@@ -1,7 +1,47 @@
 :root {
-  --bg: #282c34;
-  --header: #fff;
-  --link: #61dafb;
-  --text: hsla(0, 0%, 100%, 0.88);
+  --bg: #e44b09e2;
+  --header: #86fb00;
+  --link: #05ef34;
+  --text: hsla(227, 96%, 45%, 0.88);
 }
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--header);
+}
+
+a {
+  color: var(--link);
+}
+
+button {
+  background-color: var(--link);
+  color: var(--text);
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+}
+
+button:disabled {
+  background-color: red;
+  cursor: not-allowed;
+}
+
+
+
+/* |       |
+|       |        Opponent Hand
+BattleLog       Opponent Health
+|       |        Opponent Field
+|       |                         End Turn Button(круглая кнопка)
+|       |         Player Field
+|       |        Player Health     
+|       |         Player Hand
+|       |        */
 

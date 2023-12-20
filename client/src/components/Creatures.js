@@ -4,7 +4,7 @@ function Creatures() {
   const [creatures, setCreatures] = useState([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5555/creatures")
+    fetch("/creatures")
       .then((response) => response.json())
       .then((data) => setCreatures(data))
       .catch((error) => console.error("Error fetching creatures:", error));

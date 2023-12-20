@@ -1,7 +1,7 @@
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from config import db
+from config import db, bcrypt
 
 # Models go here!
 from sqlalchemy_serializer import SerializerMixin
@@ -11,13 +11,28 @@ from config import db
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255))
-    login = db.Column(db.String(255), unique=True)
-    password = db.Column(db.String(255))
+    username = db.Column(db.String)
+    email = db.Column(db.String(255), unique=True)
+    _password_hash = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     decks = db.relationship('Deck', backref='user')
+    @property
+    def password_hash(self):
+        return self._password_hash
 
+    @password_hash.setter
+    def password_hash(self, plain_text_password):
+        byte_object = plain_text_password.encode('utf-8')
+        encrypted_password_object = bcrypt.generate_password_hash(byte_object)
+        hashed_password_string = encrypted_password_object.decode('utf-8')
+        self._password_hash = hashed_password_string
+
+    def authenticate(self, password_string):
+        byte_object = password_string.encode('utf-8')
+        return bcrypt.check_password_hash(self.password_hash, byte_object)
+
+        
 class Deck(db.Model, SerializerMixin):
     __tablename__ = 'decks'
     id = db.Column(db.Integer, primary_key=True)
