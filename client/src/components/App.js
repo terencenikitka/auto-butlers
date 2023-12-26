@@ -14,7 +14,6 @@ function App() {
       if (resp.ok) {
         resp.json().then((user) => setUser(user))
       } else {
-        // handle what should happen if not logged in
         console.log('error')
       }
     })
@@ -25,9 +24,7 @@ function App() {
       method: 'DELETE'
     }).then((resp) => {
       if (resp.ok) {
-        //  handle logout on frontend
         setUser(null)
-        // naigate to route
       }
     })
   }

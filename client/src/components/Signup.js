@@ -37,7 +37,6 @@ function Signup({ setUser }) {
                 if (resp.ok) {
                     resp.json().then(({ user }) => {
                         setUser(user)
-                        // navigate into site
                     })
                 } else { 
                     

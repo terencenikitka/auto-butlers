@@ -8,6 +8,7 @@
 body {
   background-color: var(--bg);
   color: var(--text);
+  background-image: url('https://i.pinimg.com/originals/93/0e/90/930e9038c192457fcba4e7c135565dc9.jpg');
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -33,15 +34,67 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.container {
+  display: flex;
+  gap: 16px;
+}
 
+.battleLog {
+  flex: 1;
+}
 
-/* |       |
-|       |        Opponent Hand
-BattleLog       Opponent Health
-|       |        Opponent Field
-|       |                         End Turn Button(круглая кнопка)
-|       |         Player Field
-|       |        Player Health     
-|       |         Player Hand
-|       |        */
+.playerInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 16px;
+}
+
+.roundButton {
+  background-color: var(--link);
+  color: var(--text);
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 50%;
+}
+
+.player, .opponent {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.playerField, .opponentField {
+  padding: 16px;
+  text-align: center;
+}
+
+.healthPaper {
+  elevation : 3;
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.playerCard.selected {
+  border: 2px solid #05ef34;
+  background-color: #05ef3440; 
+}
+
+.endTurnButton {
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 16px;
+}
+
+.endTurnButton.playerTurn {
+  background-color: var(--link);
+}
+
+.endTurnButton.opponentTurn {
+  background-color: red; 
+}
 

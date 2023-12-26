@@ -18,8 +18,7 @@ function Creatures() {
           <li key={creature.id}>
             <strong>Name:</strong> {creature.name}, <strong>Cost:</strong>{" "}
             {creature.cost}, <strong>Attack:</strong> {creature.attack},{" "}
-            <strong>Health:</strong> {creature.health}, <strong>Class:</strong>{" "}
-            {creature.class_}
+            <strong>Health:</strong> {creature.health}, 
           </li>
         ))}
       </ul>

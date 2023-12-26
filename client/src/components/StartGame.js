@@ -27,14 +27,12 @@ const StartGame = () => {
     fetchDecks();
   }, []);
 
-// Inside the startGame function
 const startGame = async () => {
   if (!selectedPlayerDeck || !selectedOpponentDeck) {
     console.error('Please select decks for both players.');
     return;
   }
 
-  // Placeholder for fetching creatures in the deck
   const playerDeckCreatures = await fetchCreaturesInDeck(selectedPlayerDeck.id);
   const opponentDeckCreatures = await fetchCreaturesInDeck(selectedOpponentDeck.id);
 
@@ -43,14 +41,11 @@ const startGame = async () => {
 
   setGameStarted(true);
 
-  // Navigate to the "/game" route with state
   navigate('/game', { state: { playerDeck: playerDeckCreatures, opponentDeck: opponentDeckCreatures } });
 };
 
-  // Placeholder function
   const fetchCreaturesInDeck = async (deckId) => {
     try {
-      // Replace the following lines with your actual API calls to fetch creatures in the deck
       const deckCreaturesResponse = await fetch(`/deckcreatures?deck_id=${deckId}`);
       const deckCreaturesData = await deckCreaturesResponse.json();
 

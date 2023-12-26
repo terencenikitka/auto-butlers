@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Paper, Button, Typography } from '@mui/material';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Paper, Button, Typography, Snackbar } from '@mui/material';
 import { css } from '@emotion/react';
-
-
 
 const cardStyle = css`
   border: 1px solid #000;
   padding: 8px;
   cursor: pointer;
+  variant="contained";
+  transition: border-color 0.3s ease-in-out, background-color 0.3s ease-in-out;
+  background-color:black
+
+  &:hover {
+    border-color: red; /* Замените на нужный вам цвет */
+    background-color: #eef; /* Замените на нужный вам цвет фона */
+  }
+
+  &:hover,
+  &.selected {
+    border-width: 2px;
+  }
 `;
+
 
 const containerStyle = css`
   display: flex;
@@ -33,15 +45,16 @@ const opponentFieldStyle = css`
   text-align: center;
 `;
 
-
 const Game = () => {
+  const [hoveredCardId, setHoveredCardId] = useState(null);
+
   const [playerHand, setPlayerHand] = useState([]);
   const [opponentHand, setOpponentHand] = useState([]);
   const [playerDeckState, setPlayerDeckState] = useState([]);
   const [opponentDeckState, setOpponentDeckState] = useState([]);
   const [playerField, setPlayerField] = useState([]);
   const [opponentField, setOpponentField] = useState([]);
-  const [maxMana, setMaxMana] = useState(1);
+  const [maxMana, setMaxMana] = useState(2);
   const [mana, setMana] = useState(0);
   const [opponentMana, setOpponentMana] = useState(0);
   const [maxOpponentMana, setMaxOpponentMana] = useState(1);
@@ -59,8 +72,29 @@ const Game = () => {
   const [isPlayerAttacking, setIsPlayerAttacking] = useState(false);
   const [playerHealth, setPlayerHealth] = useState(100);
   const [opponentHealth, setOpponentHealth] = useState(100);
+  const [opponentHandCount, setOpponentHandCount] = useState(2);
+  const [hasPlayerAttacked, setHasPlayerAttacked] = useState(false);
+  const [isOpponentTurn, setIsOpponentTurn] = useState(true);
+  const [gameEnded, setGameEnded] = useState(false);
 
   const { playerDeck, opponentDeck } = useLocation().state;
+
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (playerHealth <= 0 || opponentHealth <= 0) {
+      endGame();
+    }
+  }, [playerHealth, opponentHealth]);
+  const endGame = () => {
+
+    setGameEnded(true);
+  };
+  const handleSnackbarClose = () => {
+    setGameEnded(false);
+    navigate('/startgame');
+  };
 
   useEffect(() => {
     initializeGame();
@@ -159,6 +193,7 @@ const Game = () => {
       setOpponentDeckState((prevDeck) => {
         const drawnCards = drawInitialCards(prevDeck, numCards, setRemainingOpponentDeck);
         setOpponentHand((prevHand) => [...prevHand, ...drawnCards]);
+        setOpponentHandCount((prevCount) => prevCount + drawnCards.length);
         return prevDeck.filter((card) => !drawnCards.some((drawnCard) => drawnCard.id === card.id));
       });
     } catch (error) {
@@ -171,13 +206,14 @@ const Game = () => {
       ? playerHand.filter((c) => c !== card)
       : opponentHand.filter((c) => c !== card);
 
-    if (isPlayerCard && card.cost <= mana) {
+    if (isPlayerCard && card.cost <= mana && !hasPlayerAttacked) {
       setPlayerHand(updatedHand);
       setMana(mana - card.cost);
       setPlayerField([...playerField, { ...card, hasAttacked: false }]);
       setDamageDealt(card.attack);
       setAttacker(card);
       setTarget(null);
+      setHasPlayerAttacked(true);  
     } else if (!isPlayerCard && card.cost <= opponentMana) {
       setOpponentHand(updatedHand);
       setOpponentMana(opponentMana - card.cost);
@@ -185,62 +221,103 @@ const Game = () => {
       setDamageReceived(card.attack);
       setAttacker(null);
       setTarget(card);
+      setOpponentHandCount((prevCount) => prevCount - 1);
     }
   };
 
+  const selectTarget = (opponentTargets) => {
+    const availableTargets = opponentTargets.filter(card => card.health > 0);
+
+    if (availableTargets.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableTargets.length);
+      return availableTargets[randomIndex];
+    }
+
+    return null;
+  };
+
   const performCreatureAttack = async () => {
-    setIsPlayerAttacking(true);
+    if (isPlayerTurn) {
+      setIsPlayerAttacking(true);
 
-    const newBattleLog = [];
+      const newBattleLog = [];
 
-    for (const playerCard of playerField) {
-      if (!playerCard || playerCard.hasAttacked) {
-        continue; // Пропускаем существ, которые уже атаковали в текущем ходе
-      }
+      for (const playerCard of playerField) {
+        if (!playerCard || playerCard.hasAttacked || playerCard.health <= 0) {
+          continue;
+        }
 
-      const randomOpponentIndex = Math.floor(Math.random() * opponentField.length);
-      const opponentCard = opponentField[randomOpponentIndex];
+        let opponentCard;
 
-      if (opponentCard && opponentCard.health > 0) {
-        const playerDamage = playerCard.attack;
-        const opponentDamage = opponentCard.attack;
+        if (opponentField.length > 0) {
+          const opponentCard = selectTarget(opponentField.filter(card => card.health > 0));
 
-        const updatedPlayerField = playerField.map((card) => ({
-          ...card,
-          hasAttacked: card === playerCard ? true : card.hasAttacked,
-          health: Math.max(0, card.health - opponentDamage),
-        })).filter((card) => card.health > 0);
+          if (!opponentCard) {
+            break; 
+          }
 
-        setPlayerField(updatedPlayerField);
+          const playerDamage = playerCard.attack;
+          const opponentDamage = opponentCard.attack;
 
-        const updatedOpponentField = [...opponentField];
-        updatedOpponentField[randomOpponentIndex].health -= playerDamage;
+          const updatedPlayerField = playerField.map((card) => ({
+            ...card,
+            hasAttacked: card === playerCard ? true : card.hasAttacked,
+            health: Math.max(0, card.health - opponentDamage),
+          })).filter((card) => card.health > 0);
 
-        if (updatedOpponentField[randomOpponentIndex].health <= 0) {
-          const target = updatedOpponentField[randomOpponentIndex];
-          updatedOpponentField.splice(randomOpponentIndex, 1);
-          setOpponentField(updatedOpponentField);
+          setPlayerField(updatedPlayerField);
 
-          setDamageReceived(opponentDamage);
-          setDamageDealt(playerDamage);
-          setAttacker(playerCard);
-          setTarget(target);
+          const updatedOpponentField = [...opponentField];
+          const targetIndex = updatedOpponentField.findIndex((card) => card === opponentCard);
+
+          if (targetIndex !== -1) {
+            updatedOpponentField[targetIndex].health -= playerDamage;
+
+            if (updatedOpponentField[targetIndex].health <= 0) {
+              const target = updatedOpponentField[targetIndex];
+              updatedOpponentField.splice(targetIndex, 1);
+              setOpponentField(updatedOpponentField);
+
+              setDamageReceived(opponentDamage);
+              setDamageDealt(playerDamage);
+              setAttacker(playerCard);
+              setTarget(target);
+
+              newBattleLog.push({
+                attacker: playerCard.name,
+                target: target.name,
+                damageDealt: playerDamage,
+                damageReceived: opponentDamage,
+              });
+            }
+          }
+
+          updatedPlayerField.forEach((card) => {
+            if (card === playerCard) {
+              card.hasAttacked = true;
+            }
+          });
+        } else if (!playerCard.hasAttacked) {
+          setOpponentHealth((prevHealth) => Math.max(0, prevHealth - playerCard.attack));
 
           newBattleLog.push({
             attacker: playerCard.name,
-            target: target.name,
-            damageDealt: playerDamage,
-            damageReceived: opponentDamage,
+            target: "Opponent",
+            damageDealt: playerCard.attack,
+            damageReceived: 0,
           });
-        }
-      } else {
-        // Атака героя, если нет существ противника
-        setOpponentHealth((prevHealth) => Math.max(0, prevHealth - playerCard.attack));
-      }
-    }
 
-    setBattleLog((prevBattleLog) => [...prevBattleLog, ...newBattleLog]);
-    setIsPlayerAttacking(false);
+          setPlayerField((prevField) =>
+            prevField.map((card) =>
+              card === playerCard ? { ...card, hasAttacked: true } : card
+            )
+          );
+        }
+      }
+
+      setBattleLog((prevBattleLog) => [...prevBattleLog, ...newBattleLog]);
+      setIsPlayerAttacking(false);
+    }
   };
 
   const handleOpponentTurn = async () => {
@@ -296,39 +373,17 @@ const Game = () => {
   const performOpponentCreatureAttacks = async () => {
     const newBattleLog = [];
 
-    for (const opponentCard of opponentField) {
-      const randomPlayerIndex = Math.floor(Math.random() * playerField.length);
-      const playerCard = playerField[randomPlayerIndex];
+    if (playerField.length === 0) {
+      const opponentDamage = opponentField.reduce((totalDamage, card) => totalDamage + card.attack, 0);
+      setPlayerHealth((prevHealth) => Math.max(0, prevHealth - opponentDamage));
 
-      if (opponentCard && playerCard && playerCard.health > 0) {
-        const opponentDamage = opponentCard.attack;
-        const playerDamage = playerCard.attack;
+      newBattleLog.push({
+        attacker: "Opponent",
+        target: "Player",
+        damageDealt: opponentDamage,
+        damageReceived: 0,
+      });
 
-        const updatedOpponentField = opponentField.map((card) => ({
-          ...card,
-          health: Math.max(0, card.health - playerDamage),
-        })).filter((card) => card.health > 0);
-
-        setOpponentField(updatedOpponentField);
-
-        const updatedPlayerField = [...playerField];
-        updatedPlayerField[randomPlayerIndex].health -= opponentDamage;
-
-        if (updatedPlayerField[randomPlayerIndex].health <= 0) {
-          const target = updatedPlayerField[randomPlayerIndex];
-          updatedPlayerField.splice(randomPlayerIndex, 1);
-          setPlayerField(updatedPlayerField);
-
-          newBattleLog.push({
-            attacker: opponentCard.name,
-            target: target.name,
-            damageDealt: opponentDamage,
-            damageReceived: playerDamage,
-          });
-        }
-      }
-
-      // Add a delay after each attack
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
@@ -336,19 +391,30 @@ const Game = () => {
   };
 
   const endTurn = async () => {
-    setMaxMana((prevMaxMana) => Math.min(prevMaxMana + 1, 10));
-    setMana(Math.min(maxMana + 1, 10));
+    setHasPlayerAttacked(false);
 
-    await handleOpponentTurn();
+    setTurnEnded(true);
+    setIsPlayerAttacking(false);
+    setIsOpponentTurn(!isOpponentTurn);
 
-    await drawInitialPlayerCards(1);
+    if (isOpponentTurn) {
+      await handleOpponentTurn();
+      setOpponentDrawn(false);
+    } else {
+      await drawInitialPlayerCards(1);
+      setPlayerField((prevField) => prevField.map((card) => ({ ...card, hasAttacked: false })));
 
-    performCreatureAttack();
+      performCreatureAttack();
 
-    setTurnEnded(false);
+      setMaxMana((prevMaxMana) => Math.min(prevMaxMana + 1, 10));
+      setMana(Math.min(maxMana + 1, 10));
+    }
+    
+    setBattleLog([]);
   };
-
+  
   const isPlayerTurn = !turnEnded;
+
 
   if (loading) {
     return <p>Loading...</p>;
@@ -357,40 +423,46 @@ const Game = () => {
   if (error) {
     return <p>{error}</p>;
   }
-
+  
   return (
+                
     <div css={containerStyle}>
-      <div css={battleLogStyle}>
-        <Paper elevation={3} style={{ padding: 16, marginBottom: 16 }}>
-          <Typography variant="h5">Battle Log:</Typography>
-          <ul>
-            {battleLog.map((entry, index) => (
-              <li key={index}>
-                {entry.attacker} attacked {entry.target} - Damage Dealt: {entry.damageDealt}, Damage Received: {entry.damageReceived}
-              </li>
-            ))}
-          </ul>
-        </Paper>
-      </div>
-
+                <div css={containerStyle} style={{ marginLeft: '95%' }}>
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={endTurn}
+    className={`endTurnButton ${isPlayerTurn ? 'playerTurn' : 'opponentTurn'}`}
+  >
+    {isPlayerTurn ? 'End Your Turn' : 'End Opponent Turn'}
+  </Button>
+</div>
+       <Snackbar
+        open={gameEnded}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        message={playerHealth <= 0 ? 'You lost the game!' : 'Congratulations! You won!'}
+      />
       <div css={playerInfoStyle}>
-        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
-          <Typography variant="h5">Player Health: {playerHealth}</Typography>
-        </Paper>
-
-        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+  
+  
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center', backgroundColor: 'rgba(139, 69, 19, 0.6)' }}>
           <Typography variant="h5">Player Hand (Mana: {mana}/{maxMana}):</Typography>
-          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', justifyContent: 'center' }}>
             {playerHand.map((card) => (
               <div
                 key={card.id}
                 onClick={() => isPlayerTurn && playCard(card, true)}
+                onMouseEnter={() => setHoveredCardId(card.id)}
+                onMouseLeave={() => setHoveredCardId(null)}
+                className={`playerCard ${hoveredCardId === card.id ? 'selected' : ''}`}
                 style={{
                   ...cardStyle,
                   cursor: isPlayerTurn && card.cost <= mana ? 'pointer' : 'not-allowed',
                 }}
               >
-                <Typography variant="body1">Name: {card.name}</Typography>
+  
+                <Typography variant="body1"> {card.name}</Typography>
                 <Typography variant="body1">Cost: {card.cost}</Typography>
                 <Typography variant="body1">Attack: {card.attack}</Typography>
                 <Typography variant="body1">Health: {card.health}</Typography>
@@ -398,14 +470,19 @@ const Game = () => {
             ))}
           </div>
         </Paper>
-
-        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+                <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center',   backgroundColor:' rgba(182, 102, 210, 0.6)'}}>
+                  <Typography variant="h5">Player Health: {playerHealth}</Typography>
+                </Paper>
+  
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center', backgroundColor:'rgba(228, 75, 9,0.6)' }}>
           <Typography variant="h5">Player Field:</Typography>
-          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row' }}>
+          <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', justifyContent: 'center' }} className="opponentField">
             {playerField.map((card) => (
               <div
-                key={card.id}
-                style={cardStyle}
+              key={card.id}
+              style={{
+                ...cardStyle,
+              }}
               >
                 <Typography variant="body1">Name: {card.name}</Typography>
                 <Typography variant="body1">Attack: {card.attack}</Typography>
@@ -415,14 +492,16 @@ const Game = () => {
           </div>
         </Paper>
       </div>
-
-      <Paper css={opponentFieldStyle} elevation={3}>
+  
+      <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' ,backgroundColor:'rgba(228, 75, 9,0.6)'}}>
         <Typography variant="h5">Opponent Field:</Typography>
-        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column-reverse' }}>
+        <div style={{ display: 'flex', gap: '8px', flexDirection: 'row', justifyContent: 'center' }}>
           {opponentField.map((card) => (
             <div
-              key={card.id}
-              style={cardStyle}
+            key={card.id}
+            style={{
+              ...cardStyle,
+            }}
             >
               <Typography variant="body1">Name: {card.name}</Typography>
               <Typography variant="body1">Attack: {card.attack}</Typography>
@@ -431,35 +510,21 @@ const Game = () => {
           ))}
         </div>
       </Paper>
-
+  
       <div css={playerInfoStyle}>
-        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center', backgroundColor:' rgba(182, 102, 210, 0.6)' }}>
           <Typography variant="h5">Opponent Health: {opponentHealth}</Typography>
         </Paper>
-
-        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+  
+        <Paper elevation={3} style={{ padding: '16px', marginBottom: '16px', textAlign: 'center', backgroundColor: 'rgba(139, 69, 19, 0.6)' }}>
           <Typography variant="h5">Opponent Hand (Mana: {opponentMana}/{maxOpponentMana}):</Typography>
-          <div style={{ display: 'flex', gap: '8px', flexDirection: 'column-reverse' }}>
-            {opponentHand.map((card) => (
-              <div
-                key={card.id}
-                style={{ ...cardStyle, cursor: 'not-allowed' }}
-              >
-                <Typography variant="body1">Name: {card.name}</Typography>
-                <Typography variant="body1">Cost: {card.cost}</Typography>
-                <Typography variant="body1">Attack: {card.attack}</Typography>
-                <Typography variant="body1">Health: {card.health}</Typography>
-              </div>
-            ))}
-          </div>
+          <Typography variant="body1">Cards in Hand: {opponentHandCount}</Typography>
         </Paper>
-      </div>
-
-      <Button variant="contained" color="primary" onClick={endTurn} disabled={!isPlayerTurn}>
-        End Turn
-      </Button>
-    </div>
+          </div>
+         
+        </div>
   );
+  
 };
 
 export default Game;

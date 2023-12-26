@@ -99,7 +99,7 @@ function Decks() {
               <h4>Creatures in {deck.name}</h4>
               <ul>
                 {creaturesInDeck.map((creature) => (
-                  <li key={creature.id}>{creature.name}</li>
+                  <li key={creature.id}>Name: {creature.name}  Atack:{creature.attack}  Health:{creature.health}</li>
                 ))}
               </ul>
               <input

@@ -138,7 +138,7 @@ function CreateDeck() {
           onChange={(e) => setNewDeckName(e.target.value)}
         />
       </label>
-      <label>
+      {/* <label>
         Select User:
         <select onChange={(e) => setSelectedUserId(parseInt(e.target.value))}>
           <option value="" disabled selected>
@@ -150,7 +150,7 @@ function CreateDeck() {
             </option>
           ))}
         </select>
-      </label>
+      </label> */}
       <button onClick={createDeck}>Create Deck</button>
     </div>
   );
